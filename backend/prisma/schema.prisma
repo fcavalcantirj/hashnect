@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  fullName          String?
+  phone             String?
+  avatar            String?
+  joinedDate        DateTime            @default(now())
+  verificationLevel Int                 @default(0)
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  bio               String?             // Optional bio field
+  
+  // Relationships
+  socialAccounts    SocialAccount[]
+  userHashtags      UserHashtag[]
+  connectionsFrom   Connection[]        @relation("ConnectionFrom")
+  connectionsTo     Connection[]        @relation("ConnectionTo")
+  subdomains        Subdomain[]
+  subdomainMembers  SubdomainMember[]
+  subscriptions     Subscription[]
+}
+
+model SocialAccount {
+  id           String   @id @default(uuid())
+  userId       String
+  provider     String   // google, facebook, instagram, linkedin
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relationships
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, provider])
+}
+
+model Hashtag {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relationships
+  userHashtags UserHashtag[]
+}
+
+model UserHashtag {
+  id        String   @id @default(uuid())
+  userId    String
+  hashtagId String
+  strength  Float    @default(1.0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, hashtagId])
+}
+
+model Connection {
+  id           String   @id @default(uuid())
+  fromUserId   String
+  toUserId     String
+  strength     Float    @default(1.0)
+  isAccepted   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relationships
+  fromUser     User     @relation("ConnectionFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser       User     @relation("ConnectionTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([fromUserId, toUserId])
+}
+
+model Subdomain {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  description String?
+  isPrivate   Boolean           @default(false)
+  ownerId     String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Relationships
+  owner       User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members     SubdomainMember[]
+}
+
+model SubdomainMember {
+  id          String   @id @default(uuid())
+  subdomainId String
+  userId      String
+  role        String   @default("member") // owner, admin, member
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  subdomain   Subdomain @relation(fields: [subdomainId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([subdomainId, userId])
+}
+
+model Subscription {
+  id            String   @id @default(uuid())
+  userId        String
+  planType      String   // free, premium, enterprise
+  status        String   // active, canceled, expired
+  startDate     DateTime @default(now())
+  endDate       DateTime?
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
