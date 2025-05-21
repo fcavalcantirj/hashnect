@@ -33,9 +33,9 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     })[]>;
     create(createConnectionDto: any): Promise<{
@@ -69,9 +69,9 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     findOne(id: string): Promise<{
@@ -105,9 +105,9 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     update(id: string, updateConnectionDto: any): Promise<{
@@ -141,18 +141,18 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     remove(id: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     findByUser(userId: string): Promise<({
@@ -186,9 +186,9 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     })[]>;
     findPendingRequests(body: {
@@ -211,18 +211,18 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     })[]>;
     acceptConnection(id: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     updateStrength(id: string, body: {
@@ -231,9 +231,9 @@ export declare class ConnectionsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
 }

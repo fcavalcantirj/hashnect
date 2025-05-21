@@ -4,14 +4,7 @@ services:
     env: node
     rootDir: backend
     nodeVersion: 18.19.1
-    buildCommand: |
-      cd backend
-      rm -rf node_modules
-      yarn cache clean
-      yarn install --frozen-lockfile
-      yarn add @nestjs/cli
-      yarn add prisma --dev
-      yarn build
+    buildCommand: cd backend && yarn install --frozen-lockfile && yarn add @nestjs/cli && yarn add prisma --dev && yarn prisma generate && yarn build
     startCommand: cd backend && yarn start:prod
     envVars:
       - key: NODE_ENV

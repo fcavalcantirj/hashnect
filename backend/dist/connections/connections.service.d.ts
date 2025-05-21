@@ -33,9 +33,9 @@ export declare class ConnectionsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     })[]>;
     findOne(id: string): Promise<{
@@ -69,9 +69,9 @@ export declare class ConnectionsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     create(data: any): Promise<{
@@ -105,9 +105,9 @@ export declare class ConnectionsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     update(id: string, data: any): Promise<{
@@ -141,18 +141,18 @@ export declare class ConnectionsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     remove(id: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     findByUser(userId: string): Promise<({
@@ -186,9 +186,9 @@ export declare class ConnectionsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     })[]>;
     findPendingRequests(userId: string): Promise<({
@@ -209,27 +209,27 @@ export declare class ConnectionsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     })[]>;
     acceptConnection(id: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
     updateStrength(id: string, strength: number): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        strength: number;
         toUserId: string;
         fromUserId: string;
-        strength: number;
         isAccepted: boolean;
     }>;
 }
