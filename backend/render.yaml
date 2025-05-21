@@ -3,7 +3,13 @@ services:
     name: hashnect-backend
     env: node
     rootDir: backend
-    buildCommand: cd backend && yarn install --frozen-lockfile && yarn add @nestjs/cli && yarn build
+    nodeVersion: 18.19.1
+    buildCommand: |
+      cd backend
+      yarn install --frozen-lockfile
+      yarn add @nestjs/cli
+      chmod +x ./node_modules/.bin/nest
+      yarn build
     startCommand: cd backend && yarn start:prod
     envVars:
       - key: NODE_ENV
