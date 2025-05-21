@@ -8,7 +8,7 @@ services:
       cd backend
       yarn install --frozen-lockfile
       yarn add @nestjs/cli
-      chmod +x ./node_modules/.bin/nest
+      yarn global add @nestjs/cli
       yarn build
     startCommand: cd backend && yarn start:prod
     envVars:
