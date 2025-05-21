@@ -10,6 +10,7 @@ services:
       yarn cache clean
       yarn install --frozen-lockfile
       yarn add @nestjs/cli
+      yarn global add prisma
       yarn build
     startCommand: cd backend && yarn start:prod
     envVars:
