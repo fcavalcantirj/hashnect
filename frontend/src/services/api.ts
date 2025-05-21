@@ -229,6 +229,10 @@ export const graphService = {
 
     return { nodes, links };
   },
+  getFullGraph: async () => {
+    const response = await api.get('/api/users/graph');
+    return response.data;
+  },
 };
 
 export default {

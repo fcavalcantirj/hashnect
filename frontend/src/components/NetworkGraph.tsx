@@ -32,6 +32,8 @@ interface Link {
   source: string;
   target: string;
   strength: number;
+  type?: 'friend' | 'hashtag';
+  hashtagId?: string;
 }
 
 interface GraphData {
@@ -40,61 +42,94 @@ interface GraphData {
 }
 
 const NetworkGraph: React.FC = () => {
-  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const [graph, setGraph] = useState<GraphData>({ nodes: [], links: [] });
+  const [loading, setLoading] = useState(true);
   const graphRef = useRef<any>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchGraph = async () => {
+      setLoading(true);
       try {
-        const data = await graphService.getGraphData();
-        setGraphData(data);
-      } catch (error) {
-        console.error('Error fetching graph data:', error);
-      }
-    };
+        const data = await graphService.getFullGraph();
+        // Ensure all nodes have required properties
+        const validatedNodes = data.users.map((user: any) => ({
+          ...user,
+          val: typeof user.val === 'number' && !isNaN(user.val) ? user.val : 15,
+          color: user.color || '#6200ea',
+          verificationLevel: user.verificationLevel || 0,
+          type: user.type || 'user'
+        }));
 
-    fetchData();
+        // Merge friendship and hashtag links with validation
+        const links = [
+          ...data.connections.map((c: any) => ({
+            source: c.fromUserId,
+            target: c.toUserId,
+            type: 'friend',
+            strength: typeof c.strength === 'number' && !isNaN(c.strength) ? c.strength : 0.5
+          })),
+          ...data.hashtagLinks.map((h: any) => ({
+            source: h.source,
+            target: h.target,
+            type: 'hashtag',
+            hashtagId: h.hashtagId,
+            strength: typeof h.strength === 'number' && !isNaN(h.strength) ? h.strength : 0.5
+          }))
+        ];
+
+        setGraph({ nodes: validatedNodes, links });
+      } catch (e) {
+        console.error('Error fetching graph data:', e);
+        setGraph({ nodes: [], links: [] });
+      }
+      setLoading(false);
+    };
+    fetchGraph();
   }, []);
 
   const handleNodeClick = async (node: Node) => {
     if (node.type === 'user') {
       setModalLoading(true);
-      setSelectedNode({ ...node }); // Show modal immediately with stale data
+      setSelectedNode({ ...node });
       try {
         const freshProfile = await userService.getProfile(node.id);
         setSelectedNode({ ...node, ...freshProfile });
       } catch (err) {
         console.error('Failed to fetch latest profile:', err);
-        setSelectedNode(node); // fallback to stale data
+        setSelectedNode(node);
       } finally {
         setModalLoading(false);
       }
     }
   };
 
+  if (loading) return <div>Loading network...</div>;
+
   return (
     <GraphContainer>
-      {graphData.nodes.length > 0 && (
+      {graph.nodes.length > 0 && (
         <ForceGraph3D
           ref={graphRef}
-          graphData={graphData}
+          graphData={graph}
           nodeLabel="name"
-          nodeColor={(node: any) => node.color}
-          nodeVal={(node: any) => node.val}
-          linkWidth={(link: any) => link.strength * 3}
+          nodeColor={(node: any) => node.color || '#6200ea'}
+          nodeVal={(node: any) => typeof node.val === 'number' && !isNaN(node.val) ? node.val : 15}
+          linkWidth={(link: any) => (typeof link.strength === 'number' && !isNaN(link.strength) ? link.strength * 3 : 1.5)}
           linkColor={() => '#03dac6'}
           backgroundColor="#121212"
           onNodeClick={handleNodeClick}
           nodeThreeObject={(node: any) => {
-            // Create custom node objects
             const group = new THREE.Group();
             
-            // Base sphere for all nodes
-            const geometry = new THREE.SphereGeometry(node.val / 3, 32, 32);
+            // Validate node size
+            const nodeSize = typeof node.val === 'number' && !isNaN(node.val) ? node.val / 3 : 5;
+            
+            // Create base sphere with validated color
+            const geometry = new THREE.SphereGeometry(nodeSize, 32, 32);
             const material = new THREE.MeshLambertMaterial({
-              color: node.color,
+              color: node.color || '#6200ea',
               transparent: true,
               opacity: 0.8
             });
@@ -103,11 +138,11 @@ const NetworkGraph: React.FC = () => {
             
             // Add glow effect for verification level
             if (node.type === 'user' && node.verificationLevel > 0) {
-              const glowGeometry = new THREE.SphereGeometry((node.val / 3) * 1.2, 32, 32);
+              const glowGeometry = new THREE.SphereGeometry(nodeSize * 1.2, 32, 32);
               const glowMaterial = new THREE.MeshBasicMaterial({
                 color: '#bb86fc',
                 transparent: true,
-                opacity: 0.1 * node.verificationLevel
+                opacity: 0.1 * (node.verificationLevel || 0)
               });
               const glowSphere = new THREE.Mesh(glowGeometry, glowMaterial);
               group.add(glowSphere);
@@ -116,7 +151,6 @@ const NetworkGraph: React.FC = () => {
             return group;
           }}
           linkThreeObject={(link: any) => {
-            // Create custom link objects with glow effect
             const geometry = new THREE.TubeGeometry(
               new THREE.CatmullRomCurve3([
                 new THREE.Vector3(0, 0, 0),
@@ -130,14 +164,14 @@ const NetworkGraph: React.FC = () => {
             const material = new THREE.MeshBasicMaterial({
               color: '#03dac6',
               transparent: true,
-              opacity: link.strength * 0.5
+              opacity: typeof link.strength === 'number' && !isNaN(link.strength) ? link.strength * 0.5 : 0.3
             });
             return new THREE.Mesh(geometry, material);
           }}
           linkPositionUpdate={(line: any, { start, end }) => {
-            // Update link positions
-            const startR = (typeof (start as any).val === 'number' ? (start as any).val : 3) / 3;
-            const endR = (typeof (end as any).val === 'number' ? (end as any).val : 3) / 3;
+            const startR = (typeof (start as any).val === 'number' && !isNaN((start as any).val) ? (start as any).val : 5) / 3;
+            const endR = (typeof (end as any).val === 'number' && !isNaN((end as any).val) ? (end as any).val : 5) / 3;
+            
             const lineLen = Math.sqrt(
               Math.pow(end.x - start.x, 2) +
               Math.pow(end.y - start.y, 2) +
