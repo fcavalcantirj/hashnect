@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService, authService } from '../services/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'https://hashnect.onrender.com:3001';
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
