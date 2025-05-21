@@ -2,11 +2,13 @@ import { Controller, Get, Req, UseGuards, Param, NotFoundException, Patch, Body 
 import { UsersService } from './users.service';
 import { Request } from 'express';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { PrismaService } from '../common/prisma.service';
 
+@ApiTags('users')
 @Controller('api/users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService, private readonly prisma: PrismaService) {}
 
   @Get('self')
   @UseGuards(AuthGuard('jwt'))
@@ -92,5 +94,63 @@ export class UsersController {
     if (body.bio !== undefined) data.bio = body.bio;
     const user = await this.usersService.update(id, data);
     return { success: true, user };
+  }
+
+  @Get('graph')
+  @ApiOperation({ summary: 'Get all users and all connections (friendship and hashtag-based)' })
+  async getGraph() {
+    // Get all users
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        avatar: true,
+        joinedDate: true,
+        verificationLevel: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Get all friendship connections
+    const connections = await this.prisma.connection.findMany({
+      where: { isAccepted: true },
+      select: {
+        fromUserId: true,
+        toUserId: true,
+        strength: true,
+      },
+    });
+
+    // Get all hashtag-based connections
+    const userHashtags = await this.prisma.userHashtag.findMany({
+      select: {
+        userId: true,
+        hashtagId: true,
+        strength: true,
+      },
+    });
+    // Build hashtag-based links: for each hashtag, connect all users who share it
+    const hashtagLinks: { source: string; target: string; hashtagId: string; strength: number }[] = [];
+    const hashtagToUsers: Record<string, string[]> = {};
+    userHashtags.forEach(uh => {
+      if (!hashtagToUsers[uh.hashtagId]) hashtagToUsers[uh.hashtagId] = [];
+      hashtagToUsers[uh.hashtagId].push(uh.userId);
+    });
+    Object.entries(hashtagToUsers).forEach(([hashtagId, userIds]) => {
+      for (let i = 0; i < userIds.length; i++) {
+        for (let j = i + 1; j < userIds.length; j++) {
+          hashtagLinks.push({ source: userIds[i], target: userIds[j], hashtagId, strength: 1 });
+        }
+      }
+    });
+
+    return {
+      users,
+      connections,
+      hashtagLinks,
+    };
   }
 }
