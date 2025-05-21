@@ -1,8 +1,10 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: 'http://localhost:3001',
+  baseURL: API_URL,
   withCredentials: true,
 });
 
@@ -21,7 +23,7 @@ api.interceptors.request.use(
 // Authentication services
 export const authService = {
   login: async () => {
-    window.location.href = 'http://localhost:3001/api/auth/google';
+    window.location.href = `${API_URL}/api/auth/google`;
   },
   
   logout: async () => {

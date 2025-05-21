@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService, authService } from '../services/api';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
 
@@ -14,7 +16,7 @@ const AuthCallback: React.FC = () => {
       if (token) {
         localStorage.setItem('token', token);
         try {
-          const response = await fetch('http://127.0.0.1:3001/api/users/self', {
+          const response = await fetch(`${API_URL}/api/users/self`, {
             headers: { 
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
