@@ -9,7 +9,7 @@ services:
       rm -rf node_modules
       yarn cache clean
       yarn install --frozen-lockfile
-      yarn prisma generate
+      yarn add @nestjs/cli
       yarn build
     startCommand: cd backend && yarn start:prod
     envVars:
