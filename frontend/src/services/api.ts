@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://hashnect.onrender.com:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'https://hashnect.onrender.com';
 
 // Create axios instance with base URL
 const api = axios.create({

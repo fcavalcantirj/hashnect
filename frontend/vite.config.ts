@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       ],
       proxy: {
         '/api': {
-          target: env.VITE_API_URL || 'https://hashnect.onrender.com:3001',
+          target: env.VITE_API_URL || 'https://hashnect.onrender.com',
           changeOrigin: true,
         },
       },
