@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { Analytics } from '@vercel/analytics/react';
 import NetworkGraph from './components/NetworkGraph';
 import Header from './components/Header';
 import Login from './pages/Login';
@@ -106,6 +107,7 @@ const App: React.FC = () => {
           </Routes>
           )}
         </MainContent>
+        <Analytics />
       </AppContainer>
     </Router>
   );
