@@ -3,11 +3,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @ApiTags('auth')
 @Controller('api/auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService
+  ) {}
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
@@ -25,10 +29,9 @@ export class AuthController {
       req.user,
       'google',
     );
-    console.log('Generated JWT:', access_token);
-    // Redirect to frontend with token
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     return res.redirect(
-      `${process.env.FRONTEND_URL}/auth/callback?token=${access_token}`,
+      `${frontendUrl}/auth/callback?token=${access_token}`,
     );
   }
 
@@ -48,10 +51,9 @@ export class AuthController {
       req.user,
       'facebook',
     );
-
-    // Redirect to frontend with token
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     return res.redirect(
-      `${process.env.FRONTEND_URL}/auth/callback?token=${access_token}`,
+      `${frontendUrl}/auth/callback?token=${access_token}`,
     );
   }
 
@@ -71,10 +73,9 @@ export class AuthController {
       req.user,
       'instagram',
     );
-
-    // Redirect to frontend with token
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     return res.redirect(
-      `${process.env.FRONTEND_URL}/auth/callback?token=${access_token}`,
+      `${frontendUrl}/auth/callback?token=${access_token}`,
     );
   }
 
@@ -94,10 +95,9 @@ export class AuthController {
       req.user,
       'linkedin',
     );
-
-    // Redirect to frontend with token
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     return res.redirect(
-      `${process.env.FRONTEND_URL}/auth/callback?token=${access_token}`,
+      `${frontendUrl}/auth/callback?token=${access_token}`,
     );
   }
 }
