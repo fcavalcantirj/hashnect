@@ -2,8 +2,9 @@ services:
   - type: web
     name: hashnect-backend
     env: node
-    buildCommand: yarn install --frozen-lockfile && yarn add @nestjs/cli && yarn build
-    startCommand: yarn start:prod
+    rootDir: backend
+    buildCommand: cd backend && yarn install --frozen-lockfile && yarn add @nestjs/cli && yarn build
+    startCommand: cd backend && yarn start:prod
     envVars:
       - key: NODE_ENV
         value: production
