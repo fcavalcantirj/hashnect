@@ -4,3 +4,7 @@ node_modules
 
 # Google OAuth credentials
 credentials/google/
+
+# Build artifacts
+dist/
+*.tsbuildinfo
