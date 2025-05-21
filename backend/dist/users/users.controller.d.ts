@@ -36,11 +36,11 @@ export declare class UsersController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            userId: string;
             provider: string;
             providerId: string;
             accessToken: string | null;
             refreshToken: string | null;
+            userId: string;
         }[];
         hashtags: {
             id: string;

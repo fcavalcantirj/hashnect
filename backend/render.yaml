@@ -7,8 +7,7 @@ services:
     buildCommand: |
       cd backend
       yarn install --frozen-lockfile
-      yarn add @nestjs/cli
-      yarn global add @nestjs/cli
+      yarn add typescript @types/node
       yarn build
     startCommand: cd backend && yarn start:prod
     envVars:
