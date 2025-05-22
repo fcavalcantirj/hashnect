@@ -1,59 +1,68 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { userService, authService } from '../services/api';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://hashnect.onrender.com';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { authService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { setUser } = useAuth();
 
   useEffect(() => {
-    const handleAuth = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-      console.log('AuthCallback: token from URL:', token);
-      
-      if (token) {
-        localStorage.setItem('token', token);
-        try {
-          const response = await fetch(`${API_URL}/api/users/self`, {
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log('AuthCallback: /api/users/self response:', response);
-          console.log('AuthCallback: response status:', response.status);
-          console.log('AuthCallback: response headers:', Object.fromEntries(response.headers.entries()));
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const user = await response.json();
-          console.log('AuthCallback: user data:', user);
-          
-          if (user && user.data) {
-            localStorage.setItem('user', JSON.stringify(user.data));
-            console.log('AuthCallback: user stored:', user.data);
-            navigate('/');
-          } else {
-            throw new Error('No user data received');
-          }
-        } catch (err) {
-          console.error('AuthCallback: fetch error:', err);
-          authService.logout();
+    const handleCallback = async () => {
+      try {
+        // Get token from URL
+        const params = new URLSearchParams(location.search);
+        const token = params.get('token');
+
+        if (!token) {
+          throw new Error('No token found in URL');
         }
-      } else {
-        console.error('AuthCallback: No token in URL');
-        authService.logout();
+
+        // Handle the auth callback
+        const userData = await authService.handleAuthCallback(token);
+        
+        // Update global auth state
+        setUser(userData);
+
+        // Redirect to home page
+        navigate('/');
+      } catch (error) {
+        console.error('Error handling auth callback:', error);
+        navigate('/');
       }
     };
-    handleAuth();
-  }, [navigate]);
 
-  return <div>Authenticating...</div>;
+    handleCallback();
+  }, [location, navigate, setUser]);
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh',
+      background: 'radial-gradient(circle at 60% 40%, #23234d 0%, #181824 100%)',
+      color: '#fff'
+    }}>
+      <div style={{ fontSize: 24, marginBottom: 16 }}>Completing login...</div>
+      <div className="spinner" style={{ 
+        border: '4px solid #23234d', 
+        borderTop: '4px solid #bb86fc', 
+        borderRadius: '50%', 
+        width: 48, 
+        height: 48, 
+        animation: 'spin 1s linear infinite' 
+      }} />
+      <style>{`
+        @keyframes spin { 
+          0% { transform: rotate(0deg); } 
+          100% { transform: rotate(360deg); } 
+        }
+      `}</style>
+    </div>
+  );
 };
 
 export default AuthCallback; 

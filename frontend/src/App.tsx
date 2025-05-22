@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Analytics } from '@vercel/analytics/react';
@@ -11,7 +11,8 @@ import Hashtags from './components/Hashtags';
 import Subdomains from './components/Subdomains';
 import Subscription from './components/Subscription';
 import AuthCallback from './pages/AuthCallback';
-import { authService } from './services/api';
+import { useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -25,91 +26,79 @@ const MainContent = styled.main`
 `;
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const user = authService.getCurrentUser();
-  return user ? <>{children}</> : <Navigate to="/" />;
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/" />;
+};
+
+const AppRoutes: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route
+        path="/"
+        element={
+          isAuthenticated ? <NetworkGraph /> : <Login />
+        }
+      />
+      <Route
+        path="/profile/:id"
+        element={
+          <PrivateRoute>
+            <Profile />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/connections"
+        element={
+          <PrivateRoute>
+            <Connections />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/hashtags"
+        element={
+          <PrivateRoute>
+            <Hashtags />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/subdomains"
+        element={
+          <PrivateRoute>
+            <Subdomains />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/subscription"
+        element={
+          <PrivateRoute>
+            <Subscription />
+          </PrivateRoute>
+        }
+      />
+    </Routes>
+  );
 };
 
 const App: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const currentUser = authService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
   return (
-    <Router>
-      <AppContainer>
-        <Header />
-        <MainContent>
-          {isLoading ? (
-            <div>Loading...</div>
-          ) : (
-          <Routes>
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route
-                path="/"
-                element={
-                  user ? <NetworkGraph /> : <Login />
-                }
-              />
-              <Route
-                path="/profile/:id"
-                element={
-                  <PrivateRoute>
-                    <Profile />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/connections"
-                element={
-                  <PrivateRoute>
-                    <Connections />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/hashtags"
-                element={
-                  <PrivateRoute>
-                    <Hashtags />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/subdomains"
-                element={
-                  <PrivateRoute>
-                    <Subdomains />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/subscription"
-                element={
-                  <PrivateRoute>
-                    <Subscription />
-                  </PrivateRoute>
-                }
-              />
-          </Routes>
-          )}
-        </MainContent>
-        <Analytics />
-      </AppContainer>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppContainer>
+          <Header />
+          <MainContent>
+            <AppRoutes />
+          </MainContent>
+          <Analytics />
+        </AppContainer>
+      </Router>
+    </AuthProvider>
   );
 };
 

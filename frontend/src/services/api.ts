@@ -20,6 +20,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Add response interceptor to handle token expiration
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Only redirect if we're not already on the login page
+      if (!window.location.pathname.includes('/auth/callback')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Authentication services
 export const authService = {
   login: async () => {
@@ -36,18 +52,54 @@ export const authService = {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
   },
+
+  setUserData: (token: string, userData: any) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+  },
+
+  isAuthenticated: () => {
+    return !!localStorage.getItem('token');
+  },
+
+  handleAuthCallback: async (token: string) => {
+    try {
+      // Get user data using the token
+      const response = await api.get('/api/users/self', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Store token and user data
+      authService.setUserData(token, response.data.data);
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      throw error;
+    }
+  }
 };
 
 // User services
 export const userService = {
   getProfile: async (id: string) => {
-    const response = await api.get(`/api/users/${id}/profile`);
-    return response.data;
+    try {
+      const response = await api.get(`/api/users/${id}/profile`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      throw error;
+    }
   },
   
   updateProfile: async (id: string, data: any) => {
-    const response = await api.patch(`/api/users/${id}`, data);
-    return response.data;
+    try {
+      const response = await api.patch(`/api/users/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
   },
 };
 
@@ -230,8 +282,13 @@ export const graphService = {
     return { nodes, links };
   },
   getFullGraph: async () => {
-    const response = await api.get('/api/users/graph');
-    return response.data;
+    try {
+      const response = await api.get('/api/users/graph');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching graph data:', error);
+      throw error;
+    }
   },
 };
 
