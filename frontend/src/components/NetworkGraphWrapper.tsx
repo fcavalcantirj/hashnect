@@ -7,7 +7,8 @@ const NetworkGraphWrapper: React.FC = () => {
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
+      // Use a higher breakpoint to ensure mobile version is used on tablets too
+      setIsMobile(window.innerWidth <= 1024);
     };
     
     checkMobile();
@@ -15,7 +16,12 @@ const NetworkGraphWrapper: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  return isMobile ? <NetworkGraphMobile /> : <NetworkGraph />;
+  // Render the appropriate component based on screen size
+  if (isMobile) {
+    return <NetworkGraphMobile />;
+  }
+  
+  return <NetworkGraph />;
 };
 
 export default NetworkGraphWrapper; 
