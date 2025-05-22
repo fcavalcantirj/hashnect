@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { Analytics } from '@vercel/analytics/react';
-import NetworkGraph from './components/NetworkGraph';
+import NetworkGraphWrapper from './components/NetworkGraphWrapper';
 import Header from './components/Header';
 import Login from './pages/Login';
 import Profile from './components/Profile';
@@ -39,7 +39,7 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/"
         element={
-          isAuthenticated ? <NetworkGraph /> : <Login />
+          isAuthenticated ? <NetworkGraphWrapper /> : <Login />
         }
       />
       <Route

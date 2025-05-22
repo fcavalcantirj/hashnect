@@ -175,21 +175,13 @@ const NetworkGraph: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const prevNodesRef = useRef<Node[] | null>(null);
   const hasAnimatedRef = useRef(false);
   const animationRef = useRef<number | undefined>(undefined);
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isCameraPositioning, setIsCameraPositioning] = useState(false);
   const isClickingRef = useRef(false);
-  const engineStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const clickedNodeRef = useRef<Node | null>(null);
   const [clickedNodeId, setClickedNodeId] = useState<string | null>(null);
-  const lastEngineStopRef = useRef<number>(0);
-  const engineStopDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const graphInitializedRef = useRef(false);
-  const interactionLockRef = useRef(false);
-  const pendingClickRef = useRef<Node | null>(null);
 
   useEffect(() => {
     console.log('[NetworkGraph] Render: loading=', loading, 'isCameraReady=', isCameraReady);
@@ -229,7 +221,6 @@ const NetworkGraph: React.FC = () => {
 
         setGraph({ nodes: validatedNodes, links });
         hasAnimatedRef.current = false;
-        graphInitializedRef.current = true;
       } catch (e) {
         console.error('Error fetching graph data:', e);
         setError('Failed to load network data. Please try again.');
@@ -241,40 +232,20 @@ const NetworkGraph: React.FC = () => {
   }, []);
 
   const handleNodeClick = useCallback((node: Node) => {
-    if (isClickingRef.current || node.type !== 'user' || isAnimating || interactionLockRef.current) {
-      if (node.type === 'user' && !isClickingRef.current && !isAnimating) {
-        // Store the click for later if we're locked
-        pendingClickRef.current = node;
-      }
-      return;
-    }
+    if (isClickingRef.current || node.type !== 'user' || isAnimating) return;
     
-    // Clear any pending hover timeout
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
-
     // Show loading state immediately
     setModalLoading(true);
     setSelectedNode(node);
     
     clickedNodeRef.current = node;
     setClickedNodeId(node.id);
-  }, [hoverTimeout, isAnimating]);
+  }, [isAnimating]);
 
-  // Handle node clicks in a separate effect
   useEffect(() => {
     const handleNodeClick = async () => {
-      if (!clickedNodeRef.current || isClickingRef.current || isAnimating || interactionLockRef.current) {
-        if (clickedNodeRef.current && !isClickingRef.current && !isAnimating) {
-          // Store the click for later if we're locked
-          pendingClickRef.current = clickedNodeRef.current;
-        }
-        return;
-      }
+      if (!clickedNodeRef.current || isClickingRef.current || isAnimating) return;
       
-      interactionLockRef.current = true;
       isClickingRef.current = true;
       const node = clickedNodeRef.current;
 
@@ -289,18 +260,6 @@ const NetworkGraph: React.FC = () => {
         isClickingRef.current = false;
         clickedNodeRef.current = null;
         setClickedNodeId(null);
-        
-        // Release the interaction lock after a delay
-        setTimeout(() => {
-          interactionLockRef.current = false;
-          // Process any pending click
-          if (pendingClickRef.current) {
-            const pendingNode = pendingClickRef.current;
-            pendingClickRef.current = null;
-            clickedNodeRef.current = pendingNode;
-            setClickedNodeId(pendingNode.id);
-          }
-        }, 300);
       }
     };
 
@@ -310,22 +269,17 @@ const NetworkGraph: React.FC = () => {
   }, [clickedNodeId, isAnimating]);
 
   const handleModalClose = useCallback(() => {
-    console.log('[NetworkGraph] handleModalClose called');
     setSelectedNode(null);
+    setModalLoading(false);
+    isClickingRef.current = false;
+    clickedNodeRef.current = null;
+    setClickedNodeId(null);
   }, []);
 
   const handleNodeHover = (node: Node | null, prevNode: Node | null) => {
-    // Clear any existing timeout
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-    }
-
     // Only log hover if we're not processing a click
     if (node) {
-      const timeout = setTimeout(() => {
-        console.log('[NetworkGraph] Node hover event:', { node, prevNode });
-      }, 100); // 100ms delay
-      setHoverTimeout(timeout);
+      console.log('[NetworkGraph] Node hover event:', { node, prevNode });
     }
   };
 
@@ -355,10 +309,11 @@ const NetworkGraph: React.FC = () => {
   // Add a timeout to prevent infinite loading with proper cleanup
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    if (!isCameraReady) {
+    if (!isCameraReady && !isCameraPositioning) {
       timeoutId = setTimeout(() => {
         console.warn('[NetworkGraph] Camera positioning timeout - forcing ready state');
         setIsCameraReady(true);
+        setIsCameraPositioning(false);
       }, 5000); // 5 second timeout
     }
 
@@ -367,18 +322,7 @@ const NetworkGraph: React.FC = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [isCameraReady]);
-
-  // Check for mobile on mount and window resize with proper cleanup
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []); // Empty dependency array since this should only run once on mount
+  }, [isCameraReady, isCameraPositioning]);
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -408,159 +352,119 @@ const NetworkGraph: React.FC = () => {
     };
   }, []);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeout) {
-        clearTimeout(hoverTimeout);
-      }
-    };
-  }, [hoverTimeout]);
-
   const handleEngineStop = useCallback(() => {
-    // Don't handle engine stops while clicking, animating, or locked
-    if (isClickingRef.current || isAnimating || !graphInitializedRef.current || interactionLockRef.current) return;
+    if (isClickingRef.current || isAnimating) return;
 
-    const now = Date.now();
-    if (now - lastEngineStopRef.current < 100) {
-      return; // Ignore engine stops that are too close together
-    }
-    lastEngineStopRef.current = now;
-
-    // Clear any existing debounce
-    if (engineStopDebounceRef.current) {
-      clearTimeout(engineStopDebounceRef.current);
-    }
-
-    // Debounce the engine stop handler
-    engineStopDebounceRef.current = setTimeout(() => {
-      if (isClickingRef.current || isAnimating || !graphInitializedRef.current || interactionLockRef.current) return;
-
-      console.log('[NetworkGraph] Engine stopped, positioning camera...');
-      if (graphRef.current && !isAnimating && !hasAnimatedRef.current && !isCameraPositioning) {
-        interactionLockRef.current = true;
-        setIsCameraPositioning(true);
-        hasAnimatedRef.current = true;
+    if (graphRef.current && !isAnimating && !hasAnimatedRef.current && !isCameraPositioning) {
+      setIsCameraPositioning(true);
+      hasAnimatedRef.current = true;
+      
+      try {
         const scene = graphRef.current.scene();
-        if (scene) {
-          // Add lights if not already present
-          if (!scene.children.some((child: THREE.Object3D) => child instanceof THREE.AmbientLight)) {
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-            scene.add(ambientLight);
-          }
-          if (!scene.children.some((child: THREE.Object3D) => child instanceof THREE.DirectionalLight)) {
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(1, 1, 1);
-            scene.add(directionalLight);
-          }
-
-          // Get camera
-          const camera = graphRef.current.camera();
-          if (camera) {
-            // Calculate graph bounds
-            const nodes = graph.nodes;
-            if (nodes.length === 0) {
-              console.warn('[NetworkGraph] No nodes to position camera');
-              setIsCameraPositioning(false);
-              return;
-            }
-
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let minZ = Infinity, maxZ = -Infinity;
-            let maxNodeSize = 0;
-
-            nodes.forEach(node => {
-              const x = node.x || 0;
-              const y = node.y || 0;
-              const z = node.z || 0;
-              minX = Math.min(minX, x);
-              maxX = Math.max(maxX, x);
-              minY = Math.min(minY, y);
-              maxY = Math.max(maxY, y);
-              minZ = Math.min(minZ, z);
-              maxZ = Math.max(maxZ, z);
-              
-              // Calculate node size
-              const nodeSize = typeof node.val === 'number' && !isNaN(node.val) ? Math.sqrt(node.val) * 8 : 12;
-              maxNodeSize = Math.max(maxNodeSize, nodeSize);
-            });
-
-            // Ensure we have valid bounds
-            if (minX === Infinity || maxX === -Infinity) {
-              console.warn('[NetworkGraph] Invalid graph bounds, using default values');
-              minX = -100; maxX = 100;
-              minY = -100; maxY = 100;
-              minZ = -100; maxZ = 100;
-            }
-
-            const centerX = (minX + maxX) / 2;
-            const centerY = (minY + maxY) / 2;
-            const centerZ = (minZ + maxZ) / 2;
-            const sizeX = maxX - minX;
-            const sizeY = maxY - minY;
-            const sizeZ = maxZ - minZ;
-            const maxDimension = Math.max(sizeX, sizeY, sizeZ);
-
-            console.log('[NetworkGraph] Graph bounds:', {
-              center: { x: centerX, y: centerY, z: centerZ },
-              size: { x: sizeX, y: sizeY, z: sizeZ },
-              maxDimension,
-              maxNodeSize
-            });
-
-            // Calculate target distance with extra padding
-            const baseDistance = Math.max(maxDimension, 100); // Ensure minimum distance
-            const nodeSizeFactor = Math.max(maxNodeSize, 12) * 2; // Ensure minimum node size
-            const targetDistance = (baseDistance + nodeSizeFactor) * 1.5;
-
-            // Set initial camera position
-            const angle = Math.PI / 4;
-            const initialDistance = Math.max(maxDimension * 0.5, 50); // Ensure minimum initial distance
-            camera.position.set(
-              centerX + initialDistance * Math.cos(angle),
-              centerY + initialDistance * Math.sin(angle),
-              centerZ + initialDistance * Math.sin(angle)
-            );
-            camera.lookAt(centerX, centerY, centerZ);
-            camera.fov = 45;
-            camera.updateProjectionMatrix();
-
-            // Start smooth animation to target distance
-            setIsAnimating(true);
-            animateCamera(camera, targetDistance, new THREE.Vector3(centerX, centerY, centerZ));
-
-            // Mark as ready
-            setIsCameraReady(true);
-            console.log('[NetworkGraph] setIsCameraReady(true) called');
-          }
+        if (!scene) {
+          setIsCameraReady(true);
+          setIsCameraPositioning(false);
+          return;
         }
+
+        // Add lights if needed
+        if (!scene.children.some((child: THREE.Object3D) => child instanceof THREE.AmbientLight)) {
+          const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+          scene.add(ambientLight);
+        }
+        if (!scene.children.some((child: THREE.Object3D) => child instanceof THREE.DirectionalLight)) {
+          const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+          directionalLight.position.set(1, 1, 1);
+          scene.add(directionalLight);
+        }
+
+        const camera = graphRef.current.camera();
+        if (!camera) {
+          setIsCameraReady(true);
+          setIsCameraPositioning(false);
+          return;
+        }
+
+        const nodes = graph.nodes;
+        if (nodes.length === 0) {
+          setIsCameraReady(true);
+          setIsCameraPositioning(false);
+          return;
+        }
+
+        // Calculate camera position
+        const bounds = nodes.reduce((acc, node) => {
+          const x = node.x || 0;
+          const y = node.y || 0;
+          const z = node.z || 0;
+          const size = typeof node.val === 'number' && !isNaN(node.val) ? Math.sqrt(node.val) * 8 : 12;
+          return {
+            minX: Math.min(acc.minX, x),
+            maxX: Math.max(acc.maxX, x),
+            minY: Math.min(acc.minY, y),
+            maxY: Math.max(acc.maxY, y),
+            minZ: Math.min(acc.minZ, z),
+            maxZ: Math.max(acc.maxZ, z),
+            maxSize: Math.max(acc.maxSize, size)
+          };
+        }, {
+          minX: Infinity,
+          maxX: -Infinity,
+          minY: Infinity,
+          maxY: -Infinity,
+          minZ: Infinity,
+          maxZ: -Infinity,
+          maxSize: 0
+        });
+
+        if (bounds.minX === Infinity) {
+          bounds.minX = -100;
+          bounds.maxX = 100;
+          bounds.minY = -100;
+          bounds.maxY = 100;
+          bounds.minZ = -100;
+          bounds.maxZ = 100;
+        }
+
+        const centerX = (bounds.minX + bounds.maxX) / 2;
+        const centerY = (bounds.minY + bounds.maxY) / 2;
+        const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+        const maxDimension = Math.max(
+          bounds.maxX - bounds.minX,
+          bounds.maxY - bounds.minY,
+          bounds.maxZ - bounds.minZ
+        );
+
+        const baseDistance = Math.max(maxDimension, 100);
+        const targetDistance = (baseDistance + bounds.maxSize * 2) * 1.5;
+
+        const angle = Math.PI / 4;
+        const initialDistance = Math.max(maxDimension * 0.5, 50);
+        camera.position.set(
+          centerX + initialDistance * Math.cos(angle),
+          centerY + initialDistance * Math.sin(angle),
+          centerZ + initialDistance * Math.sin(angle)
+        );
+        camera.lookAt(centerX, centerY, centerZ);
+        camera.fov = 45;
+        camera.updateProjectionMatrix();
+
+        setIsAnimating(true);
+        animateCamera(camera, targetDistance, new THREE.Vector3(centerX, centerY, centerZ));
+        setIsCameraReady(true);
+      } catch (error) {
+        console.error('[NetworkGraph] Error during camera positioning:', error);
+        setIsCameraReady(true);
+      } finally {
         setIsCameraPositioning(false);
-        
-        // Release the interaction lock after a delay
-        setTimeout(() => {
-          interactionLockRef.current = false;
-          // Process any pending click
-          if (pendingClickRef.current) {
-            const pendingNode = pendingClickRef.current;
-            pendingClickRef.current = null;
-            clickedNodeRef.current = pendingNode;
-            setClickedNodeId(pendingNode.id);
-          }
-        }, 300);
       }
-      engineStopDebounceRef.current = null;
-    }, 100);
+    }
   }, [isAnimating, isCameraPositioning, graph.nodes]);
 
   const animateCamera = (camera: THREE.PerspectiveCamera, targetDistance: number, center: THREE.Vector3) => {
     const startDistance = camera.position.distanceTo(center);
     const startTime = performance.now();
     const duration = 2000; // 2 seconds animation
-
-    // Adjust target distance for mobile
-    const mobileFactor = isMobile ? 1.3 : 1; // 30% more zoom out on mobile
-    const adjustedTargetDistance = targetDistance * mobileFactor;
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
@@ -569,7 +473,7 @@ const NetworkGraph: React.FC = () => {
       // Ease out cubic function for smooth deceleration
       const easedProgress = 1 - Math.pow(1 - progress, 3);
       
-      const currentDistance = startDistance + (adjustedTargetDistance - startDistance) * easedProgress;
+      const currentDistance = startDistance + (targetDistance - startDistance) * easedProgress;
       
       // Keep the same angle but adjust distance
       const angle = Math.PI / 4;
@@ -594,6 +498,32 @@ const NetworkGraph: React.FC = () => {
   const nodeThreeObject = useCallback((node: any) => {
     return createNodeObject(node, node.id === selectedNode?.id);
   }, [selectedNode?.id]);
+
+  // Cleanup effect for loading state
+  useEffect(() => {
+    return () => {
+      setModalLoading(false);
+      setSelectedNode(null);
+      isClickingRef.current = false;
+      clickedNodeRef.current = null;
+      setClickedNodeId(null);
+    };
+  }, []);
+
+  // Add a debug effect to track loading state
+  useEffect(() => {
+    console.log('[NetworkGraph] Loading state changed:', { modalLoading, isClickingRef: isClickingRef.current, clickedNodeId });
+  }, [modalLoading, clickedNodeId]);
+
+  // Add a debug effect to track node clicks
+  useEffect(() => {
+    console.log('[NetworkGraph] Node click state:', { 
+      clickedNode: clickedNodeRef.current?.id,
+      isClicking: isClickingRef.current,
+      clickedNodeId,
+      modalLoading
+    });
+  }, [clickedNodeId, modalLoading]);
 
   if (loading || !isCameraReady) return (
     <div style={{ 
@@ -737,7 +667,8 @@ const NetworkGraph: React.FC = () => {
               flexDirection: 'column', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              width: '100%'
+              width: '100%',
+              padding: '24px'
             }}>
               <div style={{ fontSize: 18, color: '#bb86fc', marginBottom: 12 }}>Loading profile...</div>
               <div className="spinner" style={{ 
