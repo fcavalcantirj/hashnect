@@ -281,7 +281,12 @@ const NetworkGraphMobile: React.FC = () => {
 
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
+    if (currentUser) {
+      setUser({
+        ...currentUser,
+        avatar: currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.fullName || currentUser.name)}`
+      });
+    }
   }, []);
 
   // Fetch full profile when bar is opened
@@ -639,12 +644,21 @@ const NetworkGraphMobile: React.FC = () => {
           d3AlphaDecay={0.01}
           d3VelocityDecay={0.08}
           warmupTicks={100}
+          onNodeClick={(node: any) => {
+            if (node.type === 'user') {
+              setUser({
+                ...node,
+                avatar: node.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(node.fullName || node.name)}`
+              });
+              setBarOpen(true);
+            }
+          }}
         />
       </div>
       {user && !barOpen && (
         <BottomBar onClick={() => setBarOpen(true)}>
           <BarAvatar>
-            <img src={user.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.fullName || user.name)} alt={user.fullName || user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.name)}`} alt={user.fullName || user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </BarAvatar>
           <BarName>{user.fullName || user.name}</BarName>
           <BarChevron $open={barOpen}>{barOpen ? '▲' : '▼'}</BarChevron>
@@ -655,7 +669,19 @@ const NetworkGraphMobile: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
             <button
               style={{ background: 'none', border: 'none', color: '#bb86fc', fontSize: 24, cursor: 'pointer' }}
-              onClick={() => !profileLoading && setBarOpen(false)}
+              onClick={() => {
+                if (!profileLoading) {
+                  setBarOpen(false);
+                  // Reset user to the logged-in user if not the main user
+                  const currentUser = authService.getCurrentUser();
+                  if (currentUser && currentUser.id !== user.id) {
+                    setUser({
+                      ...currentUser,
+                      avatar: currentUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.fullName || currentUser.name)}`
+                    });
+                  }
+                }
+              }}
               aria-label="Close"
               disabled={profileLoading}
             >
@@ -684,7 +710,7 @@ const NetworkGraphMobile: React.FC = () => {
             <>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
                 <BarAvatar>
-                  <img src={profile.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(profile.fullName || profile.name)} alt={profile.fullName || profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || profile.name)}`} alt={profile.fullName || profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </BarAvatar>
                 <div>
                   <BarName>{profile.fullName || profile.name}</BarName>
